@@ -1,0 +1,144 @@
+# Importação das Bibliotecas
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup as bs
+import re
+
+pagConsulta = 120 # Total de Páginas para consulta
+Links = []
+for i in range(1, pagConsulta):
+  site = 'http://larimoveis.com.br/busca/page/{}/?status=venda&type&place=belo-horizonte-mg&search_location=Belo%20Horizonte%20-%20MG'.format(i)
+  Links.append(site)
+  
+LinksAll = []
+for link in Links:
+  # Request da Página
+  resp = requests.get(link)
+  soup = bs(resp.content, 'html.parser')
+  paginas = soup.find_all('h2', {'class':"property-title"})
+  
+  for i in paginas:
+    LinksAll.append(i.find('a').get("href"))  
+    
+TIPO = []
+AREA_INT = []
+AREA_EXT = []
+AREA_TOTAL = []
+VALOR = []
+IPTU = []
+CONDOMINIO = []
+
+ENDERECO = []
+BAIRRO = []
+CIDADE = []
+CEP = []
+REGIAO = []
+ESTADO = []
+
+AREA = []
+BANHEIRO = []
+QUARTO = []
+SALA = []
+SUITES = []
+VAGAS = []
+
+LINK = []
+
+print("Iniciando o Scrapindas Páginas, Favor aguardar...")
+for link in LinksAll:
+  try:    
+    resp = requests.get(link)
+    soup = bs(resp.content, 'html.parser')
+    caracteristicas = soup.find('div', {'class':"row row-caracteristicas"})
+    caracteristicas2 = soup.find('ul', {'class':"list-two-col"})
+    
+    # CARACTERÍSTICAS_2
+    #IPTU.append(caracteristicas2.find('li', {'class':"iptuf5d00349a81a08"}).text.split(': ')[1].strip() if caracteristicas2 else "N/A")
+    if caracteristicas2.find('li', {'class':"iptuf5d00349a81a08"}) == None or caracteristicas2.find('li', {'class':"iptuf5d00349a81a08"}) == " ":
+      continue
+    else:
+      IPTU.append(caracteristicas2.find('li', {'class':"iptuf5d00349a81a08"}).text.split(': ')[1].strip())
+
+    #AREA_TOTAL.append(caracteristicas2.find('li', {'class':"c3a1rea-internaf5d54512c7d13a"}).parent.parent.contents[1].contents[4].text.split(': ')[1] if caracteristicas2 else "N/A")
+    if caracteristicas2.find('li', {'class':"c3a1rea-internaf5d54512c7d13a"}).parent.parent.contents[1].contents[4] == None or caracteristicas2.find('li', {'class':"c3a1rea-internaf5d54512c7d13a"}).parent.parent.contents[1].contents[4] == " ":
+      AREA_TOTAL.append("N/A")
+    else: 
+      AREA_TOTAL.append(caracteristicas2.find('li', {'class':"c3a1rea-internaf5d54512c7d13a"}).parent.parent.contents[1].contents[4].text.split(': ')[1]) 
+    #TIPO.append(caracteristicas2.find('li', {'class':"prop_type"}).text.split(': ')[1] if caracteristicas2 else "N/A")
+    if caracteristicas2.find('li', {'class':"prop_type"}) == None:
+      TIPO.append("N/A")
+    else:
+      TIPO.append(caracteristicas2.find('li', {'class':"prop_type"}).text.split(': ')[1])
+
+    #AREA_EXT.append(caracteristicas2.find('li', {'class':"c3a1rea-externaf5d5451436d0e3"}).text.split(': ')[1] if caracteristicas2 is None else "N/A")
+    if caracteristicas2.find('li', {'class':"c3a1rea-externaf5d5451436d0e3"}) == None:
+      AREA_EXT.append("N/A")
+
+    else: 
+      AREA_EXT.append(caracteristicas2.find('li', {'class':"c3a1rea-externaf5d5451436d0e3"}).text.split(': ')[1])
+
+    #VALOR.append(caracteristicas2.find('li', {'class':"price-details"}).text.split(':  ')[1] if caracteristicas2 else "N/A")
+    if caracteristicas2.find('li', {'class':"price-details"}) == None:
+      VALOR.append("N/A")
+    else:
+      VALOR.append(caracteristicas2.find('li', {'class':"price-details"}).text.split(':  ')[1])
+
+    if caracteristicas2.find('li', {'class':"condomc3adniof5d0034e829f7b"}) == None:
+      CONDOMINIO.append('N/A')
+    else:
+      CONDOMINIO.append(caracteristicas2.find('li', {'class':"condomc3adniof5d0034e829f7b"}).text.split(': ')[1].strip())
+
+    LINK.append(link)
+
+    #AREA_INT.append(caracteristicas2.find('li', {'class':"c3a1rea-internaf5d54512c7d13a"}).text.split(': ')[1] if caracteristicas2 else "N/A")
+    if caracteristicas2.find('li', {'class':"c3a1rea-internaf5d54512c7d13a"}) == None:
+      AREA_INT.append("N/A")
+    else:
+      AREA_INT.append(caracteristicas2.find('li', {'class':"c3a1rea-internaf5d54512c7d13a"}).text.split(': ')[1])
+
+
+    # LOCALIZAÇÃO  
+    localizacao = soup.find_all('div', {'id':"address"})
+    
+    for i in localizacao:
+      endereco = i.find('li', {'class':'detail-address'}).text if localizacao else "N/A" #i.find_all('li')[0].text
+      ENDERECO.append(endereco.split(': ')[1])
+      bairro = i.find('li', {'class':'detail-area'}).text if localizacao else "N/A" #i.find_all('li')[1].text #
+      BAIRRO.append(bairro.split(': ')[1])
+      cidade = i.find('li', {'class':'detail-city'}).text  if localizacao else "N/A"   #//*[@id="address"]/ul/li[5]/text() i.find_all('li')[2].text #
+      CIDADE.append(cidade.split(': ')[1])
+      cep = i.find('li', {'class':'detail-zip'}).text if localizacao else "N/A"   #i.find_all('li')[3].text #
+      CEP.append(cep.split(': ')[1])
+      regiao = i.find_all('li')[4].text if localizacao else "N/A"
+      REGIAO.append(regiao.split(': ')[1]) 
+      estado = i.find('li', {'class':'detail-state'}).text if localizacao else "N/A" #i.find_all('li')[5].text #
+      ESTADO.append(estado.split(': ')[1])
+
+      # CARACTERÍSTICAS
+      area = caracteristicas.find_all('span')[0].text
+      AREA.append(area)
+      banheiro = caracteristicas.find_all('span')[2].text
+      BANHEIRO.append(banheiro)
+      quarto = caracteristicas.find_all('span')[4].text
+      QUARTO.append(quarto)
+      sala = caracteristicas.find_all('span')[6].text
+      SALA.append(sala)
+      suites = caracteristicas.find_all('span')[8].text
+      SUITES.append(suites)
+      vagas = caracteristicas.find_all('span')[10].text
+      VAGAS.append(vagas)
+  
+  except:
+
+    print("Erro ao abrir o Link: ", link)
+    continue
+    
+data = {"ENDERECO":ENDERECO,"BAIRRO":BAIRRO,"REGIAO":REGIAO, "CIDADE":CIDADE,"ESTADO":ESTADO, "CEP":CEP,
+        "AREA_m2":AREA, "BANHEIRO":BANHEIRO,"QUARTO":QUARTO,"SALA":SALA,"SUITES":SUITES,"VAGAS":VAGAS,
+        "TIPO":TIPO,"AREA_INT":AREA_INT,"AREA_EXT":AREA_EXT,"AREA_TOTAL":AREA_TOTAL,"VALOR":VALOR,"IPTU":IPTU[:-10],"CONDOMINIO":CONDOMINIO,"LINK":LINK}
+        
+pd.set_option("display.max_colwidth", 300)
+
+df = pd.DataFrame(data)
+
+df.to_csv("diretorio", sep= ";", index=False)
