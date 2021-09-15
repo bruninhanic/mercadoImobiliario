@@ -1,0 +1,149 @@
+"""Este script coleta dados de imóveis a venda no site 5 Andar, de forma aleatória, com base em uma amostra de números."""
+from bs4 import BeautifulSoup
+import pandas as pd
+from time import sleep
+import re
+import requests
+
+from random import sample
+
+base = 'https://www.quintoandar.com.br/imovel/'
+parte3 = '/comprar'
+
+imoveis = []
+qtde_links = 0
+#page_number = sample(range(893200000, 893250000), 10000)
+
+page_number = nova_busca
+
+for number in page_number:
+
+
+  try:
+
+        link = base + str(number) + parte3
+        resp = requests.get(link)
+        sleep(2)
+        soup = BeautifulSoup(resp.content, 'html.parser')
+        elemento = soup.find('div', class_='MuiGrid-root MuiGrid-container')
+        qtde_links += 1
+
+
+        imovel = {}
+
+        imovel['link'] = link
+
+        if elemento.find(class_='sc-1q9n36n-0 ghXeyc sc-bdVaJa iQEQuC') == None:
+          imovel['titulo'] = 'n/a'
+        else:
+          imovel['titulo'] = elemento.find(class_='sc-1q9n36n-0 ghXeyc sc-bdVaJa iQEQuC').get_text()
+
+        if elemento.find(class_='sc-bdVaJa hOdqiw') == None:
+                imovel['endereco'] = 'n/a'
+        else:
+                imovel['endereco'] = elemento.find(class_='sc-bdVaJa hOdqiw').get_text()
+
+        if elemento.find(class_='sc-bdVaJa hOdqiw') == None:
+                imovel['rua'] = 'n/a'
+        else:
+                imovel['rua'] = elemento.find(class_='sc-bdVaJa hOdqiw').get_text().split(',')[0]
+
+        if elemento.find(class_='sc-bdVaJa hOdqiw') == None:
+                imovel['bairro'] = 'n/a'
+        else:
+                imovel['bairro'] = elemento.find(class_='sc-bdVaJa hOdqiw').get_text().split(',')[1]
+
+        if elemento.find(class_='sc-bdVaJa hOdqiw') == None:
+                imovel['cidade'] = 'n/a'
+        else:
+                imovel['cidade'] = elemento.find(class_='sc-bdVaJa hOdqiw').get_text().split(',')[2]
+
+        if elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*m².*", flags=re.DOTALL)) == None:
+                imovel['area'] = 'n/a'
+        else:
+                imovel['area'] = elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*m².*", flags=re.DOTALL)).get_text().replace('\n', '').replace(
+                'quartos', '').replace('quarto', '').replace(' ', '')
+
+        if elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*quarto.*", flags=re.DOTALL)) == None:
+                imovel['quartos'] = 'n/a'
+        else:
+                imovel['quartos'] = elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*quarto.*", flags=re.DOTALL)).get_text().replace(
+                '\n', '').replace('quartos', '').replace('quarto', '').replace(' ', '')
+
+        if elemento.find(class_='sc-bdVaJa pNqHe', text=re.compile(".*su[ií]te.*", flags=re.DOTALL)) == None:
+                imovel['suites'] = 'n/a'
+        else:
+                imovel['suites'] = elemento.find(class_='sc-bdVaJa pNqHe', text=re.compile(".*su[ií]te.*", flags=re.DOTALL)).get_text().replace(
+                '\n', '').replace('suítes', '').replace('suíte', '').replace(' ', '').replace('(', '').replace(')', '')
+
+        if elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*vaga.*", flags=re.DOTALL)) == None:
+                imovel['vagas'] = 'n/a'
+        else:
+                imovel['vagas'] = elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*vaga.*", flags=re.DOTALL)).get_text().replace('\n', '').replace(
+                'vagas', '').replace('vaga', '').replace(' ', '')
+
+        if elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*banheiro.*", flags=re.DOTALL)) == None:
+                imovel['banheiros'] = 'n/a'
+        else:
+                imovel['banheiros'] = elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*banheiro.*", flags=re.DOTALL)).get_text().replace(
+                '\n', '').replace('banheiros', '').replace('banheiro', '').replace(' ', '')
+
+        if elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*andar.*", flags=re.DOTALL)) == None:
+                imovel['andar'] = 'n/a'
+        else:
+                imovel['andar'] = elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*andar.*", flags=re.DOTALL)).get_text().replace(
+                '\n', '').replace('andar', '').replace('andar', '').replace(' ', '')
+
+        if elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*metrô.*", flags=re.DOTALL)) == None:
+                imovel['metro'] = 'n/a'
+        else:
+                imovel['metro'] = elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*metrô.*", flags=re.DOTALL)).get_text()
+
+        if elemento.find(class_='sc-bdVaJa cebWDQ', text='Imóvel') == None:
+                imovel['caract_imovel'] = 'n/a'
+        else:
+                imovel['caract_imovel'] = elemento.find(class_='sc-bdVaJa cebWDQ', text='Imóvel').parent.parent.findNext('p').contents[0]
+
+        if elemento.find(class_='sc-bdVaJa cebWDQ', text='Condomínio') == None:
+                imovel['caract_condominio'] = 'n/a'
+        else:
+                imovel['caract_condominio'] = elemento.find(class_='sc-bdVaJa cebWDQ', text='Condomínio').parent.parent.findNext('p').contents[0]
+
+        #if elemento.find(class_='sc-143ruz-0 dDGdgZ', text=re.compile(".*Elevador.*", flags=re.DOTALL)) == None:
+        #        imovel['elevador'] = 'n/a'
+        #else:
+        #        imovel['elevador'] = elemento.find(class_='sc-143ruz-0 dDGdgZ', text=re.compile(".*Elevador.*", flags=re.DOTALL)).get_text()
+
+        if elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*Sol.*", flags=re.DOTALL)) == None:
+                imovel['sol'] = 'n/a'
+        else:
+                imovel['sol'] = elemento.find(class_='sc-bdVaJa kxWnCU', text=re.compile(".*Sol.*", flags=re.DOTALL)).get_text()
+
+        if elemento.find_all(class_='ek9a7p-0 djWxJW sc-11qijje-0 dVRSgU') == None:
+                imovel['condominio'] = 'n/a'
+        else:
+                imovel['condominio'] = elemento.find_all(class_='ek9a7p-0 djWxJW sc-11qijje-0 dVRSgU')[0].get_text().split()[1]
+
+        if elemento.find_all(class_='ek9a7p-0 djWxJW sc-11qijje-0 dVRSgU') == None:
+                imovel['iptu'] = 'n/a'
+        else:
+
+                imovel['iptu'] = elemento.find_all(class_='ek9a7p-0 djWxJW sc-11qijje-0 dVRSgU')[1].get_text().replace('\xa0', '')
+
+        if elemento.find(class_='sc-bdVaJa gGDCAN') == None:
+                imovel['valor'] = 'n/a'
+        else:
+                imovel['valor'] = elemento.find(class_='sc-bdVaJa gGDCAN').get_text().split()[1]
+
+        imoveis.append(imovel)
+        print('Imovel: {}; Total de links: {}.'.format(number, qtde_links))
+
+
+  except:
+      print("Erro ao abrir o Link: ", link)
+      continue
+    
+data = pd.DataFrame(imoveis)
+dados_sem_valor = data[ data['valor'] == '0' ].index
+data.drop(dados_sem_valor , inplace=True)
+data.to_csv(r'diretorio', sep=';', index=False)
