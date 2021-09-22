@@ -1,0 +1,109 @@
+
+
+data = pd.read_csv('diretorio.csv', encoding='utf-8', error_bad_lines = False, sep = ';', decimal = ',')
+
+# preenchendo coluna tipo
+condicao = [data['titulo'].str.contains('Apartamento'),
+            (data['titulo'].str.contains('Casa')) & ~(data['titulo'].str.contains('condomínio')),
+            data['titulo'].str.contains('Casa de condomínio'),
+            data['titulo'].str.contains('Studio')]
+
+resultados = ['Apartamento', 'Casa', 'Casa de condomínio', 'Studio']
+
+data['tipo'] = np.select(condicao, resultados, np.NaN)
+
+# Arrumar espaços a direita e a esquerda nas colunas de localidade
+data['rua'] = data['rua'].str.strip()
+data['bairro'] = data['bairro'].str.strip()
+data['cidade'] = data['cidade'].str.strip()
+
+# filtrar apenas cidades necessárias
+data = data[(data['cidade']=='São Paulo') | (data['cidade']=='Rio de Janeiro') | (data['cidade']=='Belo Horizonte')]
+
+# converter 'suites' e 'vagas' em inteiro
+data['suites'].fillna(0, inplace = True) #dados ausentes convertidos em zero
+data['suites'] = data['suites'].astype('Int64')
+data['vagas'].fillna(0, inplace = True) #dados ausentes convertidos em zero
+data['vagas'] = data['vagas'].astype('Int64')
+
+# transformar dados de 'condominio' em numérico
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data['condominio'] = data['condominio'].apply(num)
+data['condominio'] = data['condominio'].astype('float', errors='ignore').astype('Int64')
+
+#tratar coluna iptu
+data['iptu'] = data['iptu'].str.split(' ', expand=True).astype(object)[1].str.strip()
+
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data['iptu'] = data['iptu'].apply(num)
+data['iptu'] = data['iptu'].astype('float', errors='ignore').astype('Int64')
+data['iptu_anual'] = 12 * data['iptu']
+
+#tratar coluna valor
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data['valor'] = data['valor'].apply(num)
+data['valor'] = data['valor'].astype('float', errors='ignore').astype('Int64')
+
+#tratar coluna area
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data['area'] = data['area'].apply(num)
+data['area'] = data['area'].astype('float', errors='ignore').astype('Int64')
+
+#tratar coluna andar
+data['andar'].fillna(0, inplace = True) #dados ausentes convertidos em zero
+
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data['andar'] = data['andar'].apply(num)
+data['andar'] = data['andar'].astype('float', errors='ignore').astype('Int64')
+
+# transformar coluna metro 
+data['metro'] = data['metro'].str.strip()
+data.loc[data['metro'] == 'Próximo ao metrô', 'metro_trem'] = 1
+data.loc[data['metro'].isnull(), 'metro_trem'] = 0
+data['metro_trem'] = data['metro_trem'].astype('float', errors='ignore').astype('Int64')
+
+# transformar coluna sol 
+data['sol'] = data['sol'].str.strip()
+data.loc[data['sol'] == 'Sol da manhã', 'sol'] = 1
+data.loc[data['sol'].isnull(), 'sol'] = 0
+data['sol'] = data['sol'].astype('float', errors='ignore').astype('Int64')
+
+# transformar coluna elevador 
+data['caract_condominio'].fillna(0, inplace = True) #preencher dados ausentes
+data['elevador'] = data['caract_condominio'].str.contains('Elevador', regex = False)
+data.loc[data['elevador'] == True, 'elevador'] = 1
+data.loc[data['elevador'] == False, 'elevador'] = 0
+data['elevador'].fillna(0, inplace = True) #preencher dados ausentes
+data['elevador'] = data['elevador'].astype('float', errors='ignore').astype('Int64')
+
+#incluir estado
+
+data['regiao'] = ''
+data.loc[data['cidade'] == 'Rio de Janeiro', 'estado'] = 'Rio de Janeiro'
+data.loc[data['cidade'] == 'São Paulo', 'estado'] = 'São Paulo'
+data.loc[data['cidade'] == 'Belo Horizonte', 'estado'] = 'Minas Gerais'
+
+# selecionar e nomear colunas
+
+data = data[['link', 'titulo', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 'suites', 
+             'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu_anual', 'valor']]
+
+data.columns = ['link', 'titulo', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 'suites', 
+                'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']
+
+data['cidade2'] = data['cidade']       
