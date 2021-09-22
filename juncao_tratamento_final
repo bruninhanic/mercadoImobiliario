@@ -1,0 +1,232 @@
+"""Após o tratamento de cada arquivo, é feita a união das bases, o tratamento de outliers e transformação de algumas variáveis"""
+
+lar = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
+viva = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
+andar = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
+
+# ordenando dados
+lar = lar[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+viva = viva[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+andar = andar[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+
+# unindo dados das 3 fontes
+todas_fontes = pd.concat([lar, viva, andar])
+
+#padronizando tipos
+todas_fontes.loc[todas_fontes['tipo'] == 'Casa em Condomínio', 'tipo'] = 'Casa de condominio'
+todas_fontes.loc[todas_fontes['tipo'] == 'Casa de condomínio', 'tipo'] = 'Casa de condominio'
+
+#deixar apenas imóveis residenciais
+rem_tipo = todas_fontes.loc[(todas_fontes['tipo'] == 'Sala') | (todas_fontes['tipo'] == 'Comercial - Loja') | (todas_fontes['tipo'] == 'Lote - Terreno') | (todas_fontes['tipo'] == 'Flat') |
+                    (todas_fontes['tipo'] == 'Casa Comercial') | (todas_fontes['tipo'] == 'Vaga de Garagem') | (todas_fontes['tipo'] == 'Andar Corrido') |
+                    (todas_fontes['tipo'] == 'Galpão') | (todas_fontes['tipo'] == 'Prédio') | (todas_fontes['tipo'] == 'Loja')]
+dados_rem_tipo = len(rem_tipo)
+todas_fontes = todas_fontes.drop(index=rem_tipo.index)
+print('Quantidade de dados removidos em razão do tipo: ', dados_rem_tipo)
+
+#copiar coluna tipo para fazer dummy depois
+todas_fontes['tipo2'] = todas_fontes['tipo']
+
+#convertendo colunas em dummies
+data_dummies = pd.get_dummies(todas_fontes, columns=['tipo', 'cidade'])
+
+#renomeando colunas
+data_dummies.columns = ['link', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado',
+                        'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador',
+                        'metro_trem', 'condominio', 'iptu', 'valor', 'tipo',
+                        'tipo_Apartamento', 'tipo_Casa', 'tipo_CasaGeminada',
+                        'tipo_CasaCondominio', 'tipo_Cobertura', 'tipo_Sobrado',
+                        'tipo_Studio', 'cidade_BeloHorizonte', 'cidade_RioDeJaneiro',
+                        'cidade_SaoPaulo']
+                        
+#verificar outliers de área
+q3_area = data.area.quantile(0.75)
+q1_area = data.area.quantile(0.25)
+
+fiq_area = float(q3_area - q1_area) * 1.5
+
+lim_sup_area = q3_area + fiq_area
+lim_inf_area = q1_area - fiq_area
+
+print('1º quartil: ', q1_area)
+print('3º quartil: ', q3_area)
+print('faixa interquartil: ', fiq_area)
+print('limite superior', lim_sup_area)
+print('limite inferior', lim_inf_area)
+
+out_area = data.loc[data['area'] > lim_sup_area]
+
+#preencher dados ausentes com a moda
+dados_preench_area = len(data.loc[data['area'] == 0])
+print('Quantidade de dados preenchidos em razão da área: ', dados_preench_area)
+data.loc[data['area'] == 0, 'area'] = 70
+
+#remover dado inconsistente
+rem_area = data.loc[(data['area'] == 135000)]
+dados_rem_area = len(rem_area)
+data = data.drop(index=rem_area.index)
+print('Quantidade de dados removidos em razão da área: ', dados_rem_area)
+
+#verificar outliers de quartos
+q3_quartos = data.quartos.quantile(0.75)
+q1_quartos = data.quartos.quantile(0.25)
+
+fiq_quartos = float(q3_quartos - q1_quartos) * 1.5
+
+lim_sup_quartos = q3_quartos + fiq_quartos
+lim_inf_quartos = q1_quartos - fiq_quartos
+
+print('1º quartil: ', q1_quartos)
+print('3º quartil: ', q3_quartos)
+print('faixa interquartil: ', fiq_quartos)
+print('limite superior', lim_sup_quartos)
+print('limite inferior', lim_inf_quartos)
+
+out_quartos = data.loc[(data['quartos'] > lim_sup_quartos) | (data['quartos'] < lim_inf_quartos)]
+print('Quantidade de registros com outliers na coluna quartos: ', len(out_quartos))
+
+# Substituindo quantidade de quartos (0 por moda)
+dados_preench_quartos = len(data.loc[data['quartos'] == 0])
+print('Quantidade de linhas da coluna quartos preenchidos: ', dados_preench_quartos)
+data.loc[data['quartos'] == 0, 'quartos'] = 2
+
+#verificar outliers de suites
+q3_suites = data.suites.quantile(0.75)
+q1_suites = data.suites.quantile(0.25)
+
+fiq_suites = float(q3_suites - q1_suites) * 1.5
+
+lim_sup_suites = q3_suites + fiq_suites
+lim_inf_suites = q1_suites - fiq_suites
+
+print('1º quartil: ', q1_suites)
+print('3º quartil: ', q3_suites)
+print('faixa interquartil: ', fiq_suites)
+print('limite superior', lim_sup_suites)
+print('limite inferior', lim_inf_suites)
+
+out_suites = data.loc[(data['suites'] > lim_sup_suites) | (data['suites'] < lim_inf_suites)]
+len(out_suites)
+
+#verificar outliers de banheiros
+q1_banheiros = data.banheiros.quantile(0.25)
+q3_banheiros = data.banheiros.quantile(0.75)
+
+fiq_banheiros = float(q3_banheiros - q1_banheiros) * 1.5
+
+lim_sup_banheiros = q3_banheiros + fiq_banheiros
+lim_inf_banheiros = q1_banheiros - fiq_banheiros
+
+print('1º quartil: ', q1_banheiros)
+print('3º quartil: ', q3_banheiros)
+print('faixa interquartil: ', fiq_banheiros)
+print('limite superior', lim_sup_banheiros)
+print('limite inferior', lim_inf_banheiros)
+
+out_banheiros = data.loc[(data['banheiros'] > lim_sup_banheiros) | (data['banheiros'] < lim_inf_banheiros)]
+len(out_banheiros)
+
+# Substituindo quantidade de banheiros (0 por moda)
+dados_preench_banheiros = len(data.loc[data['banheiros'] == 0])
+print('Quantidade de registros de banheiros preenchidos: ', dados_preench_banheiros)
+data.loc[data['banheiros'] == 0, 'banheiros'] = 1
+
+
+#verificar outliers de vagas
+q3_vagas = data.vagas.quantile(0.75)
+q1_vagas = data.vagas.quantile(0.25)
+
+fiq_vagas = float(q3_vagas - q1_vagas) * 1.5
+
+lim_sup_vagas = q3_vagas + fiq_vagas
+lim_inf_vagas = q1_vagas - fiq_vagas
+
+print('1º quartil: ', q1_vagas)
+print('3º quartil: ', q3_vagas)
+print('faixa interquartil: ', fiq_vagas)
+print('limite superior', lim_sup_vagas)
+print('limite inferior', lim_inf_vagas)
+
+out_vagas = data.loc[(data['vagas'] > lim_sup_vagas) | (data['vagas'] < lim_inf_vagas)]
+print('Quantidade de registros com outliers na coluna vagas: ', len(out_vagas))
+
+#verificar outliers de condomínio
+q3_condominio = data.condominio.quantile(0.75)
+q1_condominio = data.condominio.quantile(0.25)
+
+fiq_condominio = float(q3_condominio - q1_condominio) * 1.5
+
+lim_sup_condominio = q3_condominio + fiq_condominio
+lim_inf_condominio = q1_condominio - fiq_condominio
+
+print('1º quartil: ', q1_condominio)
+print('3º quartil: ', q3_condominio)
+print('faixa interquartil: ', fiq_condominio)
+print('limite superior', lim_sup_condominio)
+print('limite inferior', lim_inf_condominio)
+
+out_condominio = data.loc[(data['condominio'] > lim_sup_condominio) | (data['condominio'] < lim_inf_condominio)]
+print('Quantidade de registros com outliers na coluna condominio: ', len(out_condominio))
+
+#remover dados inconsistentes
+rem_condominio = data.loc[(data['condominio'] == 1300000) | (data['condominio'] == 1350000)]
+dados_rem_condominio = len(rem_condominio)
+data = data.drop(index=rem_condominio.index)
+print('Quantidade de dados removidos em razão do condominio: ', dados_rem_condominio)
+
+#verificar outliers de valor
+q3_valor = data.valor.quantile(0.75)
+q1_valor = data.valor.quantile(0.25)
+
+fiq_valor = float(q3_valor - q1_valor) * 1.5
+
+lim_sup_valor = q3_valor + fiq_valor
+lim_inf_valor = q1_valor - fiq_valor
+
+print('1º quartil: ', q1_valor)
+print('3º quartil: ', q3_valor)
+print('faixa interquartil: ', fiq_valor)
+print('limite superior', lim_sup_valor)
+print('limite inferior', lim_inf_valor)
+
+out_valor = data.loc[(data['valor'] > lim_sup_valor) | (data['valor'] < lim_inf_valor)]
+print('Quantidade de registros com outliers na coluna valor: ', len(out_valor))
+
+#verificar outliers de iptu
+q3_iptu = data.iptu.quantile(0.75)
+q1_iptu = data.iptu.quantile(0.25)
+
+fiq_iptu = float(q3_iptu - q1_iptu) * 1.5
+
+lim_sup_iptu = q3_iptu + fiq_iptu
+lim_inf_iptu = q1_iptu - fiq_iptu
+
+print('1º quartil: ', q1_iptu)
+print('3º quartil: ', q3_iptu)
+print('faixa interquartil: ', fiq_iptu)
+print('limite superior', lim_sup_iptu)
+print('limite inferior', lim_inf_iptu)
+
+out_iptu = data.loc[(data['iptu'] > lim_sup_iptu) | (data['iptu'] < lim_inf_iptu)]
+print('Quantidade de registros com outliers na coluna iptu: ', len(out_iptu))
+
+#subistituir dados zerados
+dados_ajust_iptu = len(data.loc[data['iptu'] == 0])
+print('Quantidade de registros de iptu ajustados: ', dados_ajust_iptu)
+data.loc[data['iptu'] == 0, 'iptu'] = data['valor']/2*0.01
+
+
+#remover outliers
+rem_out = data.loc[(data['area'] > lim_sup_area) | (data['quartos'] > lim_sup_quartos) | (data['quartos'] < lim_inf_quartos) | 
+                             (data['suites'] > lim_sup_suites) | (data['suites'] < lim_inf_suites) | (data['vagas'] > lim_sup_vagas) | 
+                             (data['vagas'] < lim_inf_vagas) | (data['banheiros'] > lim_sup_banheiros) | (data['banheiros'] < lim_inf_banheiros) |
+                             (data['condominio'] > lim_sup_condominio) | (data['condominio'] < lim_inf_condominio) | 
+                             (data['valor'] > lim_sup_valor) | (data['valor'] < lim_inf_valor) | (data['iptu'] < lim_inf_iptu) | (data['iptu'] > lim_sup_iptu)]
+dados_rem_out = len(rem_out)
+data = data.drop(index=rem_out.index)
+print('Quantidade de dados removidos - outliers: ', dados_rem_out)
+
+
+# salvar em arquivo
+rem_out.to_csv('diretorio.csv', index=False, sep=';')
+data.to_csv('diretorio.csv', index=False, sep=';')
