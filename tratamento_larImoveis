@@ -1,0 +1,57 @@
+"""Este notebook contém o script para tratamento inicial dos dados obtidos do site do Lar Imóveis"""
+
+import pandas as pd
+import regex as re
+import numpy as np
+
+data = pd.read_csv('arquivo.csv', encoding='utf-8', error_bad_lines = False, sep = ';')
+
+#tratar coluna IPTU
+data['iptu'] = data['IPTU'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
+
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data['iptu'] = data['iptu'].apply(num)
+data['iptu'] = data['iptu'].astype('float', errors='ignore').astype('Int64')
+data['iptu'] = data['iptu'].apply(lambda x: x * 12)
+
+#tratar coluna CONDOMINIO
+data['condominio'] = data['CONDOMINIO'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
+
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data.loc[data['condominio'].isnull(), 'condominio'] = 0 #dados ausentes convertidos em zero
+data['condominio'] = data['condominio'].apply(num)
+data['condominio'] = data['condominio'].astype('float', errors='ignore').astype('Int64')
+
+#tratar coluna VALOR
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+data['valor'] = data['VALOR'].apply(num)
+data['valor'] = data['valor'].astype('float', errors='ignore').astype('Int64')
+
+#criar coluna endereço completo
+data['endereco'] = data['ENDERECO'] + ', ' + data['BAIRRO'] + ', ' + data['CIDADE'] + ', ' + data['ESTADO'] + ', ' + data['CEP']
+
+#padronizar nomes das colunas
+lar = data[['LINK', 'TIPO', 'endereco', 'ENDERECO', 'BAIRRO', 'REGIAO', 'CIDADE', 'ESTADO', 'AREA_m2', 'QUARTO',
+            'SUITES', 'BANHEIRO', 'VAGAS', 'condominio', 'iptu', 'valor']]
+lar.columns = ['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 
+               'suites', 'banheiros', 'vagas', 'condominio', 'iptu', 'valor']        
+
+#inserir colunas com informação sobre elevador e metro; inserir nova coluna com o nome da cidade
+lar['elevador'] = 0
+lar['metro_trem'] = 0
+lar['cidade2'] = lar['cidade'] 
+
+#padronizar tipo de imóvel
+lar.loc[lar['tipo'] == 'Casa em Condomínio', 'tipo'] = 'Casa de condominio'
+
+#salvar arquivo
+lar.to_csv('diretorio.csv', index=False, sep=';')
