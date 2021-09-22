@@ -91,19 +91,21 @@ data.loc[data['elevador'] == False, 'elevador'] = 0
 data['elevador'].fillna(0, inplace = True) #preencher dados ausentes
 data['elevador'] = data['elevador'].astype('float', errors='ignore').astype('Int64')
 
-#incluir estado
-
+#incluir estado e coluna região
 data['regiao'] = ''
 data.loc[data['cidade'] == 'Rio de Janeiro', 'estado'] = 'Rio de Janeiro'
 data.loc[data['cidade'] == 'São Paulo', 'estado'] = 'São Paulo'
 data.loc[data['cidade'] == 'Belo Horizonte', 'estado'] = 'Minas Gerais'
 
 # selecionar e nomear colunas
-
 data = data[['link', 'titulo', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 'suites', 
              'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu_anual', 'valor']]
 
 data.columns = ['link', 'titulo', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 'suites', 
                 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']
 
+#duplicar coluna cidade para depois gerar dummy
 data['cidade2'] = data['cidade']       
+
+# salvar arquivo
+data.to_csv('diretorio.csv', index=False, sep=';')
