@@ -227,6 +227,13 @@ data = data.drop(index=rem_out.index)
 print('Quantidade de dados removidos - outliers: ', dados_rem_out)
 
 
+#Transformar bool em 0-1
+data.loc[data['elevador'] == True, 'elevador'] = 1
+data.loc[data['elevador'] == False, 'elevador'] = 0
+data.loc[data['metro_trem'] == True, 'metro_trem'] = 1
+data.loc[data['metro_trem'] == False, 'metro_trem'] = 0
+
+
 # salvar em arquivo
 rem_out.to_csv('diretorio.csv', index=False, sep=';')
 data.to_csv('diretorio.csv', index=False, sep=';')
