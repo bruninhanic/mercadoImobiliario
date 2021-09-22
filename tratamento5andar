@@ -1,4 +1,4 @@
-
+"""Este notebook contém o script para tratamento inicial dos dados obtidos do site do 5 Andar"""
 
 data = pd.read_csv('diretorio.csv', encoding='utf-8', error_bad_lines = False, sep = ';', decimal = ',')
 
