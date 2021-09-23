@@ -1,0 +1,134 @@
+"""Este notebook contém o script para tratamento inicial dos dados obtidos do site do Viva Real"""
+
+import pandas as pd
+import regex as re
+import numpy as np
+import datetime
+import csv
+
+data = pd.read_csv('diretorio.csv', 
+                   encoding='latin-1', error_bad_lines = False, sep=';')
+                    
+# incluir rua e retificar bairros
+data['rua'] = data['endereco'].str[0:-1].str.split('-', expand=True).astype(object)[0].str.strip()
+data['bairro'] = data['endereco'].str[0:-1].str.split('-', expand=True).astype(object)[1].str.strip()
+data['bairro'] = data['bairro'].str[0:-1].str.split(',', expand=True)
+data['regiao'] = data['regiao'].str.strip()
+
+# preenchendo coluna tipo
+condicao = [data['titulo'].str.contains('Apartamento'),
+            (data['titulo'].str.contains('Casa')) & ~(data['titulo'].str.contains('condomínio')),
+            data['titulo'].str.contains('Casa de condomínio'),
+            data['titulo'].str.contains('Cobertura'),
+            data['titulo'].str.contains('Flat'),
+            data['titulo'].str.contains('Kitnet'),
+            data['titulo'].str.contains('Sobrado'),
+            data['titulo'].str.contains('apto')]
+
+resultados = ['Apartamento', 'Casa', 'Casa de condominio', 'Cobertura', 'Flat', 'Kitnet', 'Sobrado', 'Apartamento']
+
+data['tipo'] = np.select(condicao, resultados, np.NaN)
+
+# Tipo não capturado no título
+titulos_sem_tipo = len(data[data['tipo'] == 'nan' ])
+print('Total de títulos que não continham o tipo: {}'.format(titulos_sem_tipo))
+
+# preenchendo coluna tipo prencher tipo com o nome encontrado no link
+condicao = [data['link'].str.contains('apartamento'),
+            (data['link'].str.contains('casa')) & ~(data['link'].str.contains('condominio')),
+            data['link'].str.contains('casa-de-condominio'),
+            data['link'].str.contains('cobertura'),
+            data['link'].str.contains('flat'),
+            data['link'].str.contains('kitnet'),
+            data['link'].str.contains('sobrado')]
+
+resultados = ['Apartamento', 'Casa', 'Casa de condominio', 'Cobertura', 'Flat', 'Kitnet', 'Sobrado']
+
+data['tipo_link'] = np.select(condicao, resultados, np.NaN)
+
+data.loc[data['tipo'] == 'nan', 'tipo'] = data['tipo_link']
+
+titulos_sem_tipo_final = len(data[data['tipo'] == 'nan' ])
+
+prenchidos = titulos_sem_tipo - titulos_sem_tipo_final
+
+data.drop(columns=['tipo_link'])
+
+print('Dados de tipo preenchidos a partir do link: {}'.format(prenchidos))
+
+# incluir cidade e estado
+data.loc[data['endereco'].str.contains('Belo Horizonte'), 'cidade'] = 'Belo Horizonte'
+data['estado'] = 'Minas Gerais'
+dados_nBH = data[ data['cidade'].isnull() ].index
+data.drop(dados_nBH, inplace=True)
+
+# ajustar coluna area
+data['area'] = data['area'].str[0:-1].str.split('m', expand=True).astype(object)[0].str.strip()
+data['area_ajustada'] = data['area'].apply(lambda x: x.split('a'))
+data['area'] = data['area_ajustada'].apply(lambda x: x[0])
+
+# ajustar coluna quartos
+data['quartos_ajustada'] = data['quartos'].apply(lambda x: x.split('a'))
+data['quartos'] = data['quartos_ajustada'].apply(lambda x: x[0])
+data.loc[data['quartos'] == 'Nãoinform', 'quartos'] = 0 #dados ausentes convertidos em zero
+
+# ajustar coluna suites
+data['suites_ajustada'] = data['suites'].apply(lambda x: x.split('até'))
+data['suites'] = data['suites_ajustada'].apply(lambda x: x[0])
+data.loc[data['suites'] == '--', 'suites'] = 0 #dados ausentes convertidos em zero
+data.loc[data['suites'] == '', 'suites'] = 0 #dados ausentes convertidos em zero
+
+# ajustar coluna vagas
+data['vagas_ajustada'] = data['vagas'].apply(lambda x: x.split('até'))
+data['vagas'] = data['vagas_ajustada'].apply(lambda x: x[0])
+data.loc[data['vagas'] == 'NãoinformadoSolicitar', 'vagas'] = 0 #dados ausentes convertidos em zero
+data.loc[data['vagas'] == '', 'vagas'] = 0 #dados ausentes convertidos em zero
+
+# ajustar coluna banheiros
+data['banheiros'] = data['banheiros'].str.strip()
+data['banheiros_ajustada'] = data['banheiros'].apply(lambda x: x.split('a'))
+data['banheiros'] = data['banheiros_ajustada'].apply(lambda x: x[0])
+data.loc[data['banheiros'] == 'Não inform', 'banheiros'] = 0 #dados ausentes convertidos em zero
+data.loc[data['banheiros'] == '', 'banheiros'] = 0 #dados ausentes convertidos em zero
+
+#convertendo colunas sem informação de condomínio e iptu
+data.loc[data['condominio'] == '-', 'condominio'] = 0 #dados ausentes convertidos em zero
+data.loc[data['iptu'] == '-', 'iptu'] = 0 #dados ausentes convertidos em zero
+
+#retornar apenas números das colunas valor, condomínio e iptu
+def num(item):
+    item = re.sub('[^0-9]', '', str(item))
+    return item
+
+# substituir valores colunas
+data['valor'] = data['valor'].apply(num)
+data['condominio'] = data['condominio'].apply(num)
+data['iptu'] = data['iptu'].apply(num)
+
+# excluir dados sem valor e sem qtde quartos
+dados_sem_valor = data[ data['valor'] == '' ].index
+data.drop(dados_sem_valor , inplace=True)
+
+#declarar colunas tipo inteiro
+data['valor'] = data['valor'].astype('float', errors='ignore').astype('Int64')
+data['area'] = data['area'].astype('float', errors='ignore').astype('Int64')
+data['quartos'] = data['quartos'].astype('float', errors='ignore').astype('Int64')
+data['condominio'] = data['condominio'].astype('float', errors='ignore').astype('Int64')
+data['iptu'] = data['iptu'].astype('float', errors='ignore').astype('Int64')
+data['suites'] = data['suites'].astype('float', errors='ignore').astype('Int64')
+data['vagas'] = data['vagas'].astype('float', errors='ignore').astype('Int64')
+data['banheiros'] = data['banheiros'].astype('float', errors='ignore').astype('Int64')
+
+#convertendo coluna elevador em 0/1
+data.loc[data['elevador'] == '--', 'elevador'] = 0
+data.loc[data['elevador'] == 'sim', 'elevador'] = 1
+
+#convertendo coluna metro em 0/1
+data.loc[data['metro_trem'] == '--', 'metro_trem'] = 0
+data.loc[data['metro_trem'] == 'sim', 'metro_trem'] = 1
+
+#criando outra coluna de cidade para manter coluna na criação de dummies
+data['cidade2'] = data['cidade']
+
+# salvar arquivo
+data.to_csv('diretorio.csv', index=False, sep=';')
