@@ -10,7 +10,7 @@ viva = viva[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'c
 andar = andar[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
 
 # unindo dados das 3 fontes
-todas_fontes = pd.concat([lar, viva, andar])
+todas_fontes = pd.concat([lar, viva, andar], ignore_index=True)
 
 #padronizando tipos
 todas_fontes.loc[todas_fontes['tipo'] == 'Casa em Condomínio', 'tipo'] = 'Casa de condominio'
