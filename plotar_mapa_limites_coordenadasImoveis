@@ -1,0 +1,111 @@
+"""Com este código, consegue-se plotar o mapa com os limites dos municípios e as coordenadas das regiões dos imóveis"""
+
+import json
+import requests
+import pandas as pd
+
+#carregar malha de municípios da API do IBGE
+limites = requests.get('https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo+json&qualidade=maxima&intrarregiao=municipio')
+mun = limites.json()
+# Criando um arquivo Json
+with open(r'C:\Users\bruna\Google Drive\_Mentoria_DSA\mapa\json_files\municipios.json','w') as arquivo:
+    arquivo.write(json.dumps(mun))
+geojson = json.load(open(r'C:\Users\bruna\Google Drive\_Mentoria_DSA\mapa\json_files\municipios.json'))
+for feature in geojson['features']:
+ feature['id'] = feature['properties']['codarea']
+
+#Criar dataframe com dados consolidados por cidade
+df = pd.read_csv(r'C:\Users\bruna\Google Drive\_Mentoria_DSA\dados_todos\TodosImoveis_tratado_v4_coordenadas.csv', encoding='utf-8', sep = ';')
+resumo = pd.DataFrame(df['cidade'].value_counts())
+resumo = resumo.reset_index()
+resumo.columns = ['cidade', 'qt_imoveis']
+media = pd.DataFrame(df.groupby(['cidade'])['valor'].agg('mean'))
+media = media.reset_index()
+media.columns = ['cidade', 'media_valor']
+data = resumo.merge(media, how='outer', on='cidade')
+
+#adicionar os geocodigos dos municipios
+data.loc[data['cidade'] == 'Belo Horizonte', 'codarea'] = '3106200'
+data.loc[data['cidade'] == 'Rio de Janeiro', 'codarea'] = '3304557'
+data.loc[data['cidade'] == 'São Paulo', 'codarea'] = '3550308'
+
+#plotar gráfico do valor médio por cidade
+import plotly as plt
+import plotly.express as px
+fig = px.choropleth_mapbox(
+      data, #database
+      geojson = geojson, #shape information
+      locations = 'codarea', #define the limits on the map/geography
+      featureidkey='id',
+      color = 'media_valor', #defining the color of the scale through the database
+      mapbox_style='carto-darkmatter',
+      zoom=6, center = {'lat': -21.8702, 'lon': -45.3174},  
+      opacity=0.5,
+      hover_name = 'cidade', #the information in the box
+      hover_data =['media_valor', 'qt_imoveis'],
+      title='Média de valor dos imóveis por cidade'
+      animation_frame = 'cidade'
+      )
+fig.update_geos(fitbounds = 'locations', visible = False)
+fig.update_layout(coloraxis_colorbar=dict(
+    title='Média de valor <br>dos imóveis<br>(mil reais)',
+    separatethousands=True,
+    showticksuffix='none'
+))
+fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+
+#OBTER COORDENADAS DOS IMÓVEIS
+data['endereco_pais'] = data['endereco']
+data.loc[(data['link'].str.contains('quintoandar')) & (data['endereco'].str.contains('Belo Horizonte')), 'endereco_pais'] = data['endereco'] + ', Minas Gerais'
+data.loc[(data['link'].str.contains('quintoandar')) & (data['endereco'].str.contains('Rio de Janeiro')), 'endereco_pais'] = data['endereco'] + ', Rio de Janeiro'
+data.loc[(data['link'].str.contains('quintoandar')) & (data['endereco'].str.contains('São Paulo')), 'endereco_pais'] = data['endereco'] + ', São Paulo'
+data['endereco_pais'] = data['endereco_pais'] + ', Brasil'
+
+from geopy.geocoders import Nominatim
+geolocator = Nominatim(user_agent="coordenadas")
+
+from geopy.geocoders import Nominatim
+geolocator = Nominatim(user_agent="coordenadas")
+from geopy.extra.rate_limiter import RateLimiter
+geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+data['loc2'] = data['endereco'].apply(geocode)
+data['point2']= data['loc2'].apply(lambda loc: tuple(loc.point) if loc else None)
+
+# salvar no drive
+data.to_csv('diretorio_arquivo_coordenadas.csv', index=False, sep=';')
+
+#carregar arquivo com coordenadas
+data = pd.read_csv('diretorio_arquivo_coordenadas.csv', encoding='utf-8', sep = ';')
+data['text'] = 'cidade: '+ data['cidade']+ '<br>, bairro: ' + data['bairro'] + '<br>, área: ' + data['area'].astype(str) + ', ' + '<br>Valor: R$ ' + data['valor'].astype(str)
+data = data[data['point'].notnull()]
+
+data = data.loc[(data['loc2'].str.contains('Belo Horizonte, Região Geográfica Imediata de Belo Horizonte')) | 
+                (data['loc2'].str.contains('São Paulo, Região Imediata de São Paulo')) | 
+                (data['loc2'].str.contains('Rio de Janeiro, Região Geográfica Imediata do Rio de Janeiro'))]
+
+data['lat'] = data['point2'].apply(lambda x: x.split(',')[0].replace('(', ''))
+data['lng'] = data['point2'].apply(lambda x: x.split(',')[1])
+
+data['lat'] = data['lat'].astype('float')
+data['lng'] = data['lng'].astype('float')
+
+data_lat = data.lat
+data_lon = data.lng
+locations_name = data.text
+
+import plotly.graph_objects as go
+
+fig.add_trace(go.Scattermapbox(
+        lat=data_lat,
+        lon=data_lon,
+        mode='markers',
+        marker=go.scattermapbox.Marker(
+            size=8,
+            color=data['valor'],
+            opacity=0.7
+        ),
+        text=locations_name,
+        hoverinfo='text'
+    ))
+
+fig.show()
