@@ -4,3 +4,13 @@ Projeto em Python para coleta, tratamento e análise de dados de imóveis. Desen
 ########
 O primeiro passo é coletar os dados de imóveis nos diferentes sites.
 Os scripts de coleta estão no diretório principal com os seguintes nomes:
+- coleta_dados_5andar
+- coleta_dados_lar_imoveis
+- coleta_dados_vivaReal
+
+########
+Depois de coletar, é necessário tratar os dados para ajustar o formato, pois os arquivos salvos apresentam campos em formato 'object'.
+O script para formatação dos dados também estão separados de acordo com a fonte:
+- tratamento_dados_5andar
+- tratamento_dados_VivaReal
+- tratamento_dados_larImoveis
