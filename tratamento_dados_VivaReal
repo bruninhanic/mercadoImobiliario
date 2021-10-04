@@ -15,6 +15,9 @@ data['bairro'] = data['endereco'].str[0:-1].str.split('-', expand=True).astype(o
 data['bairro'] = data['bairro'].str[0:-1].str.split(',', expand=True)
 data['regiao'] = data['regiao'].str.strip()
 
+#ajustar bairros dos endereços incompletos
+data.loc[data['bairro'] =='', 'bairro' ] = data['endereco'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
+
 # preenchendo coluna tipo
 condicao = [data['titulo'].str.contains('Apartamento'),
             (data['titulo'].str.contains('Casa')) & ~(data['titulo'].str.contains('condomínio')),
@@ -25,7 +28,7 @@ condicao = [data['titulo'].str.contains('Apartamento'),
             data['titulo'].str.contains('Sobrado'),
             data['titulo'].str.contains('apto')]
 
-resultados = ['Apartamento', 'Casa', 'Casa de condominio', 'Cobertura', 'Flat', 'Kitnet', 'Sobrado', 'Apartamento']
+resultados = ['Apartamento', 'Casa', 'Casa', 'Apartamento', 'Apartamento', 'Apartamento', 'Casa', 'Apartamento']
 
 data['tipo'] = np.select(condicao, resultados, np.NaN)
 
@@ -42,7 +45,7 @@ condicao = [data['link'].str.contains('apartamento'),
             data['link'].str.contains('kitnet'),
             data['link'].str.contains('sobrado')]
 
-resultados = ['Apartamento', 'Casa', 'Casa de condominio', 'Cobertura', 'Flat', 'Kitnet', 'Sobrado']
+resultados = ['Apartamento', 'Casa', 'Casa', 'Apartamento', 'Apartamento', 'Apartamento', 'Casa']
 
 data['tipo_link'] = np.select(condicao, resultados, np.NaN)
 
@@ -85,6 +88,7 @@ data.loc[data['vagas'] == 'NãoinformadoSolicitar', 'vagas'] = 0 #dados ausentes
 data.loc[data['vagas'] == '', 'vagas'] = 0 #dados ausentes convertidos em zero
 
 # ajustar coluna banheiros
+
 data['banheiros'] = data['banheiros'].str.strip()
 data['banheiros_ajustada'] = data['banheiros'].apply(lambda x: x.split('a'))
 data['banheiros'] = data['banheiros_ajustada'].apply(lambda x: x[0])
@@ -99,7 +103,6 @@ data.loc[data['iptu'] == '-', 'iptu'] = 0 #dados ausentes convertidos em zero
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 # substituir valores colunas
 data['valor'] = data['valor'].apply(num)
 data['condominio'] = data['condominio'].apply(num)
@@ -109,7 +112,7 @@ data['iptu'] = data['iptu'].apply(num)
 dados_sem_valor = data[ data['valor'] == '' ].index
 data.drop(dados_sem_valor , inplace=True)
 
-#declarar colunas tipo inteiro
+#declarar variáveis numéricas
 data['valor'] = data['valor'].astype('float', errors='ignore').astype('Int64')
 data['area'] = data['area'].astype('float', errors='ignore').astype('Int64')
 data['quartos'] = data['quartos'].astype('float', errors='ignore').astype('Int64')
@@ -127,8 +130,34 @@ data.loc[data['elevador'] == 'sim', 'elevador'] = 1
 data.loc[data['metro_trem'] == '--', 'metro_trem'] = 0
 data.loc[data['metro_trem'] == 'sim', 'metro_trem'] = 1
 
-#criando outra coluna de cidade para manter coluna na criação de dummies
+#criando outra coluna de cidade e tipo para manter coluna na criação de dummies
 data['cidade2'] = data['cidade']
+data['tipo2'] = data['tipo']
+
+#PADRONIZAR BAIRROS E REGIÕES
+#carregando relação de bairros
+regioes = pd.read_excel('diretorio.xlsx', sheet_name='regioes', index_col=None)
+# Remover caracteres dos nomes dos bairros e regioes
+import regex as re
+import unicodedata
+from unicodedata import normalize
+
+def remove_acentos(item):
+    regex = re.compile(r'[\u0300-\u036F]', flags=re.DOTALL)
+    normalized = unicodedata.normalize('NFKD', str(item)).upper().strip()
+    return regex.sub('', normalized)
+
+regioes['bairro_cidade'] = regioes['bairro_cidade'].apply(remove_acentos) 
+regioes['regiao_cidade'] = regioes['regiao_cidade'].apply(remove_acentos) 
+regioes = regioes[['bairro_cidade', 'regiao_cidade']]
+
+#manter apenas os registros com nomes de bairro padronizados
+data['bairro'] = data['bairro'].apply(remove_acentos) 
+data['cidade'] = data['cidade'].apply(remove_acentos)
+data['estado'] = data['estado'].apply(remove_acentos)
+data['bairro_cidade'] = 'BAIRRO ' + data['bairro'] + ', ' + data['cidade'] + ', ' + data['estado'] + ', ' + 'BRASIL'
+data['regiao'] = data['regiao_cidade'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
+data = data.merge(regioes, how='inner', on='bairro_cidade')
 
 # salvar arquivo
 data.to_csv('diretorio.csv', index=False, sep=';')
