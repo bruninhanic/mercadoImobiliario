@@ -8,22 +8,18 @@ data = pd.read_csv('arquivo.csv', encoding='utf-8', error_bad_lines = False, sep
 
 #tratar coluna IPTU
 data['iptu'] = data['IPTU'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
-
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data['iptu'] = data['iptu'].apply(num)
 data['iptu'] = data['iptu'].astype('float', errors='ignore').astype('Int64')
 data['iptu'] = data['iptu'].apply(lambda x: x * 12)
 
 #tratar coluna CONDOMINIO
 data['condominio'] = data['CONDOMINIO'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
-
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data.loc[data['condominio'].isnull(), 'condominio'] = 0 #dados ausentes convertidos em zero
 data['condominio'] = data['condominio'].apply(num)
 data['condominio'] = data['condominio'].astype('float', errors='ignore').astype('Int64')
@@ -32,26 +28,52 @@ data['condominio'] = data['condominio'].astype('float', errors='ignore').astype(
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data['valor'] = data['VALOR'].apply(num)
 data['valor'] = data['valor'].astype('float', errors='ignore').astype('Int64')
 
-#criar coluna endereço completo
+#criar coluna com endereço completo
 data['endereco'] = data['ENDERECO'] + ', ' + data['BAIRRO'] + ', ' + data['CIDADE'] + ', ' + data['ESTADO'] + ', ' + data['CEP']
 
-#padronizar nomes das colunas
+#selecionar e renomear colunas
 lar = data[['LINK', 'TIPO', 'endereco', 'ENDERECO', 'BAIRRO', 'REGIAO', 'CIDADE', 'ESTADO', 'AREA_m2', 'QUARTO',
             'SUITES', 'BANHEIRO', 'VAGAS', 'condominio', 'iptu', 'valor']]
 lar.columns = ['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 
-               'suites', 'banheiros', 'vagas', 'condominio', 'iptu', 'valor']        
+               'suites', 'banheiros', 'vagas', 'condominio', 'iptu', 'valor']  
+               
+#padronizar coluna tipo
+lar.loc[lar['tipo'] == 'Cobertura', 'tipo'] = 'Apartamento'
+lar.loc[lar['tipo'] == 'Flat', 'tipo'] = 'Apartamento'
+lar.loc[lar['tipo'] == 'Casa em Condomínio', 'tipo'] = 'Casa'
+lar = lar.loc[(lar['tipo'] == 'Casa') | (lar['tipo'] == 'Apartamento')]
 
-#inserir colunas com informação sobre elevador e metro; inserir nova coluna com o nome da cidade
-lar['elevador'] = 0
-lar['metro_trem'] = 0
-lar['cidade2'] = lar['cidade'] 
+#criando outra coluna de cidade e tipo para manter coluna na criação de dummies
+data['cidade2'] = data['cidade']
+data['tipo2'] = data['tipo']
 
-#padronizar tipo de imóvel
-lar.loc[lar['tipo'] == 'Casa em Condomínio', 'tipo'] = 'Casa de condominio'
+#PADRONIZAR BAIRROS E REGIÕES
+#carregando relação de bairros
+regioes = pd.read_excel('diretorio.xlsx', sheet_name='regioes', index_col=None)
+# Remover caracteres dos nomes dos bairros e regioes
+import regex as re
+import unicodedata
+from unicodedata import normalize
+
+def remove_acentos(item):
+    regex = re.compile(r'[\u0300-\u036F]', flags=re.DOTALL)
+    normalized = unicodedata.normalize('NFKD', str(item)).upper().strip()
+    return regex.sub('', normalized)
+
+regioes['bairro_cidade'] = regioes['bairro_cidade'].apply(remove_acentos) 
+regioes['regiao_cidade'] = regioes['regiao_cidade'].apply(remove_acentos) 
+regioes = regioes[['bairro_cidade', 'regiao_cidade']]
+
+#manter apenas os registros com nomes de bairro padronizados
+lar['bairro'] = lar['bairro'].apply(remove_acentos) 
+lar['cidade'] = lar['cidade'].apply(remove_acentos)
+lar['estado'] = lar['estado'].apply(remove_acentos)
+lar['bairro_cidade'] = 'BAIRRO ' + lar['bairro'] + ', ' + lar['cidade'] + ', ' + lar['estado'] + ', ' + 'BRASIL'
+lar['regiao'] = lar['regiao_cidade'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
+lar = lar.merge(regioes, how='inner', on='bairro_cidade')
 
 #salvar arquivo
 lar.to_csv('diretorio.csv', index=False, sep=';')
