@@ -14,3 +14,7 @@ O script para formatação dos dados também estão separados de acordo com a fo
 
 3. Após este tratamento inicial, juntamos os arquivos e removemos os outliers, utilizando o código constante do arquivo:
 - juncao_tratamento_final
+
+4. Opcionalmente, pode-se plotar os dados dos imóveis em mapas, de acordo com os scripts:
+- plotar_mapa_limites_coordenadasImoveis (caso queira plotar com as coordenadas dos imóveis)
+- plotar_mapa_coordenadasRegioes (caso queira plotar com os dados consolidados por região dos municípios)
