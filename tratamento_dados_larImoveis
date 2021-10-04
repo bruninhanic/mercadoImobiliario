@@ -47,8 +47,8 @@ lar.loc[lar['tipo'] == 'Casa em Condomínio', 'tipo'] = 'Casa'
 lar = lar.loc[(lar['tipo'] == 'Casa') | (lar['tipo'] == 'Apartamento')]
 
 #criando outra coluna de cidade e tipo para manter coluna na criação de dummies
-data['cidade2'] = data['cidade']
-data['tipo2'] = data['tipo']
+lar['cidade2'] = lar['cidade']
+lar['tipo2'] = lar['tipo']
 
 #PADRONIZAR BAIRROS E REGIÕES
 #carregando relação de bairros
