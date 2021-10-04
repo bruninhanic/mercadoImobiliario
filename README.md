@@ -14,3 +14,7 @@ O script para formatação dos dados também estão separados de acordo com a fo
 - tratamento_dados_5andar
 - tratamento_dados_VivaReal
 - tratamento_dados_larImoveis
+
+########
+Após este tratamento inicial, juntamos os arquivos e removemos os outliers, utilizando o código constante do arquivo:
+- juncao_tratamento_final
