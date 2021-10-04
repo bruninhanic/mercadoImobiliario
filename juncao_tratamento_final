@@ -1,43 +1,89 @@
 """Após o tratamento de cada arquivo, é feita a união das bases, o tratamento de outliers e transformação de algumas variáveis"""
 
+import pandas as pd
+
+# carregando dados de cada fonte
+
 lar = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
-viva = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
+vivaSP = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
+vivaRJ = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
+vivaBH = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
 andar = pd.read_csv('diretorio.csv', encoding='utf-8', sep = ';')
 
 # ordenando dados
-lar = lar[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
-viva = viva[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
-andar = andar[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+lar = lar[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'bairro_cidade', 'regiao_cidade', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+vivaSP = vivaSP[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'bairro_cidade', 'regiao_cidade', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+vivaRJ = vivaRJ[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'bairro_cidade', 'regiao_cidade', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+vivaBH = vivaBH[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'bairro_cidade', 'regiao_cidade', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
+andar = andar[['link', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'bairro_cidade', 'regiao_cidade', 'cidade', 'cidade2', 'estado', 'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']]
 
 # unindo dados das 3 fontes
-todas_fontes = pd.concat([lar, viva, andar], ignore_index=True)
-
-#padronizando tipos de imóvel
-todas_fontes.loc[todas_fontes['tipo'] == 'Casa em Condomínio', 'tipo'] = 'Casa de condominio'
-todas_fontes.loc[todas_fontes['tipo'] == 'Casa de condomínio', 'tipo'] = 'Casa de condominio'
+todas_fontes = pd.concat([lar, vivaSP, vivaBH, vivaRJ, andar], ignore_index=True)
 todas_fontes['tipo2'] = todas_fontes['tipo']
 
-#excluindo tipos comerciais
-rem_tipo = todas_fontes.loc[(todas_fontes['tipo'] == 'Sala') | (todas_fontes['tipo'] == 'Comercial - Loja') | (todas_fontes['tipo'] == 'Lote - Terreno') | (todas_fontes['tipo'] == 'Flat') |
-                    (todas_fontes['tipo'] == 'Casa Comercial') | (todas_fontes['tipo'] == 'Vaga de Garagem') | (todas_fontes['tipo'] == 'Andar Corrido') |
-                    (todas_fontes['tipo'] == 'Galpão') | (todas_fontes['tipo'] == 'Prédio') | (todas_fontes['tipo'] == 'Loja')]
-dados_rem_tipo = len(rem_tipo)
-todas_fontes = todas_fontes.drop(index=rem_tipo.index)
-print('Quantidade de dados removidos em razão do tipo: ', dados_rem_tipo)
+#OBTER AS COORDENADAS DAS REGIÕES
+#carregando relação de bairros
+import regex as re
+import unicodedata
+from unicodedata import normalize
+def remove_acentos(item):
+    regex = re.compile(r'[\u0300-\u036F]', flags=re.DOTALL)
+    normalized = unicodedata.normalize('NFKD', str(item)).upper().strip()
+    return regex.sub('', normalized)
+bairros = pd.read_excel('diretorio.xlsx', sheet_name='regioes', index_col=None)
+bairros['regiao_cidade'] = bairros['regiao_cidade'].apply(remove_acentos) 
+regioes = pd.DataFrame(bairros['regiao_cidade'].value_counts())
+regioes.reset_index(inplace=True)
+regioes = regioes[['index']]
+regioes.columns=['regiao_cidade']
+
+from geopy.geocoders import Nominatim
+geolocator = Nominatim(user_agent="coordenadas")
+from geopy.extra.rate_limiter import RateLimiter
+geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+regioes['loc'] = regioes['regiao_cidade'].apply(geocode)
+regioes['point']= regioes['loc'].apply(lambda loc: tuple(loc.point) if loc else None)
+
+#ajustar manualmente algumas coordenadas
+zne_bh = (-19.862296478496713, -43.91179480073082, 0.0)
+zo_bh = (-19.954421720737095, -43.978604795820395, 0.0)
+zo_rj = (-22.900722085030683, -43.5722063576326, 0.0)
+zl_sp = (-23.532865359781844, -46.50337594678687, 0.0)
+zc_sp = (-23.542635508662027, -46.638161834052546, 0.0)
+zl_bh = (-19.90643458323198, -43.90074842170721, 0.0)
+zs_sp = (-23.65086100413762, -46.659339156251484, 0.0)
+zs_rj = (-22.951935333417232, -43.18924479823301, 0.0)
+zn_sp = (-23.477440005182824, -46.67117681845322, 0.0)
+zo_sp = (-23.569107966691902, -46.70117681801165, 0.0)
+zc_rj = (-22.90360019576814, -43.18208695982223, 0.0)
+
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO NORDESTE, BELO HORIZONTE, MINAS GERAIS, BRASIL', 'point'] = str(zne_bh)
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO OESTE, BELO HORIZONTE, MINAS GERAIS, BRASIL', 'point'] = str(zo_bh)
+regioes.loc[regioes['regiao_cidade'] == 'ZONA OESTE, RIO DE JANEIRO, RIO DE JANEIRO, BRASIL', 'point'] = str(zo_rj)
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO LESTE, SAO PAULO, SAO PAULO, BRASIL', 'point'] = str(zl_sp)
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO CENTRO, SAO PAULO, SAO PAULO, BRASIL', 'point'] = str(zc_sp)
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO LESTE, BELO HORIZONTE, MINAS GERAIS, BRASIL', 'point'] = str(zl_bh)
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO SUL, SAO PAULO, SAO PAULO, BRASIL', 'point'] = str(zs_sp)
+regioes.loc[regioes['regiao_cidade'] == 'ZONA SUL, RIO DE JANEIRO, RIO DE JANEIRO, BRASIL', 'point'] = str(zs_rj)
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO NORTE, SAO PAULO, SAO PAULO, BRASIL', 'point'] = str(zn_sp)
+regioes.loc[regioes['regiao_cidade'] == 'REGIAO OESTE, SAO PAULO, SAO PAULO, BRASIL', 'point'] = str(zo_sp)
+regioes.loc[regioes['regiao_cidade'] == 'ZONA CENTRAL, RIO DE JANEIRO, RIO DE JANEIRO, BRASIL', 'point'] = str(zc_rj)
+
+#unir dataframe e dados das coordenadas das regioes
+todas_fontes = todas_fontes.merge(regioes, how='inner', on='regiao_cidade')
 
 #convertendo colunas em dummies
-data = pd.get_dummies(todas_fontes, columns=['tipo', 'cidade'])
+data = todas_fontes
+data = pd.get_dummies(data, columns=['tipo', 'cidade'])
 
 #renomeando colunas
-data.columns = ['link', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado',
-                        'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador',
-                        'metro_trem', 'condominio', 'iptu', 'valor', 'tipo',
-                        'tipo_Apartamento', 'tipo_Casa', 'tipo_CasaGeminada',
-                        'tipo_CasaCondominio', 'tipo_Cobertura', 'tipo_Kitnet', 'tipo_Sobrado',
-                        'tipo_Studio', 'cidade_BeloHorizonte', 'cidade_RioDeJaneiro',
-                        'cidade_SaoPaulo']
-                        
- #verificar outliers de área
+data.columns = ['link', 'endereco', 'rua', 'bairro', 'regiao', 'bairro_cidade',
+       'regiao_cidade', 'cidade', 'estado', 'area', 'quartos', 'suites',
+       'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu',
+       'valor', 'tipo', 'loc', 'point', 'tipo_Apartamento', 'tipo_Casa',
+       'cidade_BeloHorizonte', 'cidade_RioDeJaneiro', 'cidade_SaoPaulo']
+
+#verificar outliers de área
 #remover dado inconsistente
 rem_area = data.loc[(data['area'] == 135000)]
 dados_rem_area = len(rem_area)
@@ -90,7 +136,6 @@ print('limite inferior', lim_inf_quartos)
 
 out_quartos = data.loc[(data['quartos'] > lim_sup_quartos) | (data['quartos'] < lim_inf_quartos)]
 print('Quantidade de registros com outliers na coluna quartos: ', len(out_quartos))
-
 
 #verificar outliers de suites
 q3_suites = data.suites.quantile(0.75)
@@ -237,17 +282,13 @@ data = data.drop(index=rem_out.index)
 print('Quantidade de dados removidos - outliers: ', dados_rem_out)
 
 
-#renomear colunas
-data = data[['link', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado',
-                        'area', 'quartos', 'suites', 'banheiros', 'vagas', 'elevador',
-                        'metro_trem', 'condominio', 'iptu', 'valor', 'tipo',
-                        'tipo_Apartamento', 'tipo_Casa', 'tipo_CasaGeminada',
-                        'tipo_CasaCondominio', 'tipo_Cobertura', 'tipo_Kitnet', 'tipo_Sobrado',
-                        'tipo_Studio', 'cidade_BeloHorizonte', 'cidade_RioDeJaneiro',
-                        'cidade_SaoPaulo']]
-                        
-
-
+#selecionar colunas
+data = data[['link', 'endereco', 'rua', 'bairro', 'regiao', 'bairro_cidade',
+       'regiao_cidade', 'cidade', 'estado', 'area', 'quartos', 'suites',
+       'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu',
+       'valor', 'tipo', 'loc', 'point', 'tipo_Apartamento', 'tipo_Casa',
+       'cidade_BeloHorizonte', 'cidade_RioDeJaneiro', 'cidade_SaoPaulo']]
+ 
 # salvar em arquivo
 rem_out.to_csv('diretorio.csv', index=False, sep=';')
 data.to_csv('diretorio.csv', index=False, sep=';')
