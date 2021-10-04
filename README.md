@@ -17,4 +17,4 @@ O script para formatação dos dados também estão separados de acordo com a fo
 
 4. Opcionalmente, pode-se plotar os dados dos imóveis em mapas, de acordo com os scripts:
 - plotar_mapa_limites_coordenadasImoveis (caso queira plotar com as coordenadas dos imóveis)
-- plotar_mapa_coordenadasRegioes (caso queira plotar com os dados consolidados por região administrativa dos municípios)
+- plotar_mapa_coordenadasRegioes (caso considere interessante plotar com os dados consolidados por região administrativa dos municípios)
