@@ -1,5 +1,9 @@
 """Este notebook contém o script para tratamento inicial dos dados obtidos do site do 5 Andar"""
 
+import pandas as pd
+import regex as re
+import numpy as np
+
 data = pd.read_csv('diretorio.csv', encoding='utf-8', error_bad_lines = False, sep = ';', decimal = ',')
 
 # preenchendo coluna tipo
@@ -7,12 +11,10 @@ condicao = [data['titulo'].str.contains('Apartamento'),
             (data['titulo'].str.contains('Casa')) & ~(data['titulo'].str.contains('condomínio')),
             data['titulo'].str.contains('Casa de condomínio'),
             data['titulo'].str.contains('Studio')]
-
-resultados = ['Apartamento', 'Casa', 'Casa de condomínio', 'Studio']
-
+resultados = ['Apartamento', 'Casa', 'Casa', 'Apartamento']
 data['tipo'] = np.select(condicao, resultados, np.NaN)
 
-# Arrumar espaços a direita e a esquerda nas colunas de localidade
+# Arrumar espaços a direita e a esquerda dos campos de endereço/localidade
 data['rua'] = data['rua'].str.strip()
 data['bairro'] = data['bairro'].str.strip()
 data['cidade'] = data['cidade'].str.strip()
@@ -30,17 +32,14 @@ data['vagas'] = data['vagas'].astype('Int64')
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data['condominio'] = data['condominio'].apply(num)
 data['condominio'] = data['condominio'].astype('float', errors='ignore').astype('Int64')
 
 #tratar coluna iptu
 data['iptu'] = data['iptu'].str.split(' ', expand=True).astype(object)[1].str.strip()
-
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data['iptu'] = data['iptu'].apply(num)
 data['iptu'] = data['iptu'].astype('float', errors='ignore').astype('Int64')
 data['iptu_anual'] = 12 * data['iptu']
@@ -49,7 +48,6 @@ data['iptu_anual'] = 12 * data['iptu']
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data['valor'] = data['valor'].apply(num)
 data['valor'] = data['valor'].astype('float', errors='ignore').astype('Int64')
 
@@ -57,17 +55,14 @@ data['valor'] = data['valor'].astype('float', errors='ignore').astype('Int64')
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data['area'] = data['area'].apply(num)
 data['area'] = data['area'].astype('float', errors='ignore').astype('Int64')
 
 #tratar coluna andar
 data['andar'].fillna(0, inplace = True) #dados ausentes convertidos em zero
-
 def num(item):
     item = re.sub('[^0-9]', '', str(item))
     return item
-
 data['andar'] = data['andar'].apply(num)
 data['andar'] = data['andar'].astype('float', errors='ignore').astype('Int64')
 
@@ -91,7 +86,7 @@ data.loc[data['elevador'] == False, 'elevador'] = 0
 data['elevador'].fillna(0, inplace = True) #preencher dados ausentes
 data['elevador'] = data['elevador'].astype('float', errors='ignore').astype('Int64')
 
-#incluir estado e coluna região
+#incluir estado
 data['regiao'] = ''
 data.loc[data['cidade'] == 'Rio de Janeiro', 'estado'] = 'Rio de Janeiro'
 data.loc[data['cidade'] == 'São Paulo', 'estado'] = 'São Paulo'
@@ -100,12 +95,38 @@ data.loc[data['cidade'] == 'Belo Horizonte', 'estado'] = 'Minas Gerais'
 # selecionar e nomear colunas
 data = data[['link', 'titulo', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 'suites', 
              'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu_anual', 'valor']]
-
 data.columns = ['link', 'titulo', 'tipo', 'endereco', 'rua', 'bairro', 'regiao', 'cidade', 'estado', 'area', 'quartos', 'suites', 
                 'banheiros', 'vagas', 'elevador', 'metro_trem', 'condominio', 'iptu', 'valor']
 
-#duplicar coluna cidade para depois gerar dummy
-data['cidade2'] = data['cidade']       
+#criando outra coluna de cidade e tipo para manter coluna na criação de dummies
+data['cidade2'] = data['cidade']
+data['tipo2'] = data['tipo']
+
+#PADRONIZAR BAIRROS E REGIÕES
+#carregando relação de bairros
+regioes = pd.read_excel('diretorio.xlsx', sheet_name='regioes', index_col=None)
+# Remover caracteres dos nomes dos bairros e regioes
+import regex as re
+import unicodedata
+from unicodedata import normalize
+
+def remove_acentos(item):
+    regex = re.compile(r'[\u0300-\u036F]', flags=re.DOTALL)
+    normalized = unicodedata.normalize('NFKD', str(item)).upper().strip()
+    return regex.sub('', normalized)
+
+regioes['bairro_cidade'] = regioes['bairro_cidade'].apply(remove_acentos) 
+regioes['regiao_cidade'] = regioes['regiao_cidade'].apply(remove_acentos) 
+regioes = regioes[['bairro_cidade', 'regiao_cidade']]
+
+#manter apenas os registros com nomes de bairro padronizados
+data['bairro'] = data['bairro'].apply(remove_acentos) 
+data['cidade'] = data['cidade'].apply(remove_acentos)
+data['estado'] = data['estado'].apply(remove_acentos)
+data['bairro_cidade'] = 'BAIRRO ' + data['bairro'] + ', ' + data['cidade'] + ', ' + data['estado'] + ', ' + 'BRASIL'
+data['regiao'] = data['regiao_cidade'].str[0:-1].str.split(',', expand=True).astype(object)[0].str.strip()
+data = data.merge(regioes, how='inner', on='bairro_cidade')
+
 
 # salvar arquivo
 data.to_csv('diretorio.csv', index=False, sep=';')
