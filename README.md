@@ -22,9 +22,17 @@ O script para formatação dos dados também estão separados de acordo com a fo
 5. A construção e avaliação do modelo constam do notebook:
 - modelo.ipynb
 
+5.1 O arquivo tratado e utilizado para a construção do modelo está no repositório:
+- TodosImoveis_tratado_v5.csv
+
+5.2 Também consta no repositório o arquivo tratado sem a padronização de bairros/regiões, que somam uma quantidade maior de registros:
+- TodosImoveis_tratado_v4.csv
+
 6. Os arquivos da aplicação encontram-se na pasta:
 -
 
 7. A aplicação pode ser acessada entrando na pasta do projeto, pelo prompt de comando digite:
 streamlit run Stream.py. 
 ou pelo site: https://share.streamlit.io/carloseduardobh/vendacasa/Stream.py
+
+
