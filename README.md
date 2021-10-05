@@ -18,3 +18,10 @@ O script para formatação dos dados também estão separados de acordo com a fo
 4. Opcionalmente, pode-se plotar os dados dos imóveis em mapas, de acordo com os scripts:
 - plotar_mapa_limites_coordenadasImoveis (caso queira plotar com as coordenadas dos imóveis)
 - plotar_mapa_coordenadasRegioes (caso considere interessante plotar com os dados consolidados por região administrativa dos municípios)
+
+5. A construção e avaliação do modelo constam do notebook:
+- modelo.ipynb
+
+6. A aplicação pode ser acessada entrando na pasta do projeto, pelo prompt de comando digite:
+streamlit run Stream.py. 
+ou pelo site: https://share.streamlit.io/carloseduardobh/vendacasa/Stream.py
