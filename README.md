@@ -1,5 +1,5 @@
 # mercadoImobiliario
-Projeto em Python para coleta, tratamento e análise de dados de imóveis. Desenvolvido na Mentoria DSA 2021, pelos equipe composta por Graziele Rodrigues, Carlos Eduardo,  Rodrigo Carvalho e Bruna Nicolato.
+Projeto em Python para coleta, tratamento e análise de dados de imóveis. Desenvolvido na Mentoria DSA 2021, pela equipe composta por Graziele Rodrigues, Carlos Eduardo,  Rodrigo Carvalho e Bruna Nicolato.
 
 1. O primeiro passo é coletar os dados de imóveis nos diferentes sites. Os scripts de coleta estão no diretório principal com os seguintes nomes:
 - coleta_dados_5andar
