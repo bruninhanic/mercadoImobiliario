@@ -22,6 +22,9 @@ O script para formatação dos dados também estão separados de acordo com a fo
 5. A construção e avaliação do modelo constam do notebook:
 - modelo.ipynb
 
-6. A aplicação pode ser acessada entrando na pasta do projeto, pelo prompt de comando digite:
+6. Os arquivos da aplicação encontram-se na pasta:
+-
+
+7. A aplicação pode ser acessada entrando na pasta do projeto, pelo prompt de comando digite:
 streamlit run Stream.py. 
 ou pelo site: https://share.streamlit.io/carloseduardobh/vendacasa/Stream.py
