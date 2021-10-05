@@ -1,0 +1,83 @@
+import json
+import requests
+import pandas as pd
+
+#carregar malha de municípios da API do IBGE
+limites = requests.get('https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR?formato=application/vnd.geo+json&qualidade=maxima&intrarregiao=municipio')
+mun = limites.json()
+# Criando um arquivo Json
+with open('municipios.json','w') as arquivo:
+    arquivo.write(json.dumps(mun))
+geojson = json.load(open('municipios.json'))
+for feature in geojson['features']:
+ feature['id'] = feature['properties']['codarea']
+ 
+#Criar dataframe com dados consolidados por cidade
+df = pd.read_csv('TodosImoveis_tratado_v5.csv', encoding='utf-8', sep = ';')
+resumo = pd.DataFrame(df['cidade'].value_counts())
+resumo = resumo.reset_index()
+resumo.columns = ['cidade', 'qt_imoveis']
+media = pd.DataFrame(df.groupby(['cidade'])['valor'].agg('mean'))
+media = media.reset_index()
+media.columns = ['cidade', 'media_valor']
+data = resumo.merge(media, how='outer', on='cidade')
+#adicionar os geocodigos dos municipios
+data.loc[data['cidade'] == 'Belo Horizonte', 'codarea'] = '3106200'
+data.loc[data['cidade'] == 'Rio de Janeiro', 'codarea'] = '3304557'
+data.loc[data['cidade'] == 'São Paulo', 'codarea'] = '3550308'
+
+#plotar gráfico do valor médio por cidade
+
+import plotly as plt
+import plotly.express as px
+fig = px.choropleth_mapbox(
+      data, #database
+      geojson = geojson, #shape information
+      locations = 'codarea', #define the limits on the map/geography
+      featureidkey='id',      
+      mapbox_style='carto-darkmatter',
+      zoom=6, center = {'lat': -21.8702, 'lon': -45.3174},  
+      opacity=0.5,
+      hover_name = 'cidade', #the information in the box
+      hover_data =['media_valor', 'qt_imoveis'],
+      title='Média de valor dos imóveis por cidade',
+      #animation_frame = 'cidade'
+      )
+fig.update_geos(fitbounds = 'locations', visible = False)
+fig.update_layout(showlegend=False, margin={"r":0,"t":0,"l":0,"b":0})
+
+#Consolidar os dados por região e plotar
+resumo = df.groupby(['regiao', 'regiao_cidade', 'point']).size().reset_index(name='qt_imoveis')
+media = pd.DataFrame(df.groupby(['regiao', 'regiao_cidade', 'point'])['valor'].agg('mean')).reset_index()
+media.columns = ['regiao', 'regiao_cidade', 'point', 'media_valor']
+resumo = resumo.merge(media, how='outer', on='regiao_cidade')
+resumo = df.groupby(['regiao', 'regiao_cidade', 'point']).size().reset_index(name='qt_imoveis')
+media = pd.DataFrame(df.groupby(['regiao', 'regiao_cidade', 'point'])['valor'].agg('mean')).reset_index()
+media.columns = ['regiao', 'regiao_cidade', 'point', 'media_valor']
+resumo = resumo.merge(media, how='outer', on='regiao_cidade')
+resumo = resumo [['regiao_x', 'regiao_cidade', 'point_x', 'qt_imoveis', 'media_valor']]
+resumo.columns = ['regiao', 'regiao_cidade', 'point', 'qt_imoveis', 'media_valor']
+resumo['text'] = resumo['regiao']+ '<br>Total de imóveis: ' + resumo['qt_imoveis'].astype(str) + '<br>Valor Médio dos imóveis: ' + resumo['media_valor'].astype(str)
+
+data = resumo[resumo['point'].notnull()]
+data['lat'] = data['point'].apply(lambda x: x.split(',')[0].replace('(', ''))
+data['lng'] = data['point'].apply(lambda x: x.split(',')[1])
+data['lat'] = data['lat'].astype('float')
+data['lng'] = data['lng'].astype('float')
+data_lat = data.lat
+data_lon = data.lng
+locations_name = data.text
+import plotly.graph_objects as go
+fig.add_trace(go.Scattermapbox(
+        lat=data_lat,
+        lon=data_lon,
+        mode='markers',
+        marker=go.scattermapbox.Marker(
+            size=data['media_valor']/10000,
+            color=data['qt_imoveis'],
+            opacity=0.7
+        ),
+        text=locations_name,
+        hoverinfo='text'
+    ))
+fig.show()
