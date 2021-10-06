@@ -28,6 +28,7 @@ O script para formatação dos dados também estão separados de acordo com a fo
 5.2 Também consta no repositório o arquivo tratado sem a padronização de bairros/regiões, que somam uma quantidade maior de registros:
 - TodosImoveis_tratado_v4.csv
 
+####ATENÇÃO#######
 6. Os arquivos da aplicação encontram-se no repositório:
 - https://github.com/bruninhanic/vendacasa
 
