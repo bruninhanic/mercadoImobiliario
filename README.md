@@ -32,7 +32,6 @@ O script para formatação dos dados também estão separados de acordo com a fo
 -
 6. Os arquivos da aplicação encontram-se no repositório:
 - https://github.com/bruninhanic/vendacasa
-- 
 
 7. A aplicação pode ser acessada entrando na pasta do projeto, pelo prompt de comando digite:
 streamlit run Stream.py. 
