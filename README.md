@@ -30,7 +30,7 @@ O script para formatação dos dados também estão separados de acordo com a fo
 
 #######ATENÇÃO#######
 -
-6. Os arquivos da aplicação encontram-se no repositório:
+6. Os arquivos da aplicação desenvolvida para a previsão de preços online encontram-se no repositório:
 - https://github.com/bruninhanic/vendacasa
 
 7. A aplicação pode ser acessada entrando na pasta do projeto, pelo prompt de comando digite:
